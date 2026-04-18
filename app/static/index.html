@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TG Storage</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e8e8e8; min-height: 100vh; }
+    .container { max-width: 720px; margin: 0 auto; padding: 24px 16px; }
+    h1 { font-size: 1.4rem; font-weight: 600; color: #fff; margin-bottom: 24px; }
+    h1 span { color: #5eabff; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-title { font-size: 0.85rem; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+    label { display: block; font-size: 0.85rem; color: #aaa; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px 12px; background: #0f0f0f; border: 1px solid #333; border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; outline: none; transition: border-color 0.2s; margin-bottom: 12px; }
+    input:focus, select:focus { border-color: #5eabff; }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    .btn { padding: 10px 18px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: opacity 0.2s; white-space: nowrap; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: #5eabff; color: #000; }
+    .btn-ghost { background: #2a2a2a; color: #e8e8e8; }
+    .btn-danger { background: #ff4444; color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .drop-zone { border: 2px dashed #333; border-radius: 12px; padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .drop-zone:hover, .drop-zone.drag-over { border-color: #5eabff; background: rgba(94, 171, 255, 0.05); }
+    .drop-zone p { color: #666; font-size: 0.9rem; margin-top: 8px; }
+    .drop-icon { font-size: 2rem; }
+    #file-input { display: none; }
+    .progress-item { margin-top: 8px; }
+    .progress-label { font-size: 0.8rem; color: #aaa; margin-bottom: 4px; display: flex; justify-content: space-between; }
+    .progress-bar { height: 4px; background: #2a2a2a; border-radius: 2px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: #5eabff; border-radius: 2px; transition: width 0.3s; width: 0%; }
+    .file-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1f1f1f; }
+    .file-item:last-child { border-bottom: none; }
+    .folder-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+    .folder-item:hover { background: #222; }
+    .file-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .file-info { flex: 1; min-width: 0; }
+    .file-name { font-size: 0.9rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-meta { font-size: 0.75rem; color: #666; margin-top: 2px; }
+    .file-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+    .badge-ok { background: #1a3a1a; color: #4caf50; }
+    .badge-pending { background: #2a2a1a; color: #ffc107; }
+    .msg { padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-top: 10px; }
+    .msg-ok { background: #1a3a1a; color: #4caf50; border: 1px solid #2a4a2a; }
+    .msg-err { background: #3a1a1a; color: #f44336; border: 1px solid #4a2a2a; }
+    .hidden { display: none !important; }
+    .storage-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .storage-row select { flex: 1; margin-bottom: 0; }
+    .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #888; margin-bottom: 12px; flex-wrap: wrap; }
+    .breadcrumb span { color: #aaa; cursor: pointer; }
+    .breadcrumb span:hover { color: #5eabff; }
+    .breadcrumb .sep { color: #444; }
+    .breadcrumb .current { color: #e8e8e8; cursor: default; }
+    .breadcrumb .current:hover { color: #e8e8e8; }
+    .section-divider { border: none; border-top: 1px solid #222; margin: 12px 0; }
+    .inline-edit { background: #0f0f0f; border: 1px solid #5eabff; border-radius: 6px; color: #e8e8e8; font-size: 0.9rem; padding: 4px 8px; outline: none; width: 140px; }
+    .move-select { background: #0f0f0f; border: 1px solid #333; border-radius: 6px; color: #888; font-size: 0.75rem; padding: 4px 6px; outline: none; cursor: pointer; }
+    .move-select:focus { border-color: #5eabff; }
+    #upload-progress-list { margin-top: 10px; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 20px; width: 100%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .modal-title { font-size: 1rem; font-weight: 600; color: #fff; }
+    .dup-group { border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .dup-group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .dup-group-name { font-size: 0.85rem; font-weight: 500; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+    .dup-group-meta { font-size: 0.75rem; color: #555; flex-shrink: 0; }
+    .dup-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1f1f1f; }
+    .dup-item:last-child { border-bottom: none; }
+    .dup-item input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; flex-shrink: 0; accent-color: #ff4444; }
+    .dup-keep-badge { font-size: 0.65rem; background: #1a3a1a; color: #4caf50; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+    .dup-del-badge { font-size: 0.65rem; background: #3a1a1a; color: #f44336; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+    /* ── Gallery grid ── */
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 4px; }
+    .gallery-card { background: #111; border: 1px solid #222; border-radius: 8px; overflow: hidden; cursor: pointer; transition: border-color 0.15s; }
+    .gallery-card:hover { border-color: #5eabff; }
+    .gallery-thumb { position: relative; width: 100%; padding-top: 100%; background: #1a1a1a; overflow: hidden; }
+    .gallery-blur { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
+    .gallery-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.3s; }
+    .gallery-img.loaded { opacity: 1; }
+    .gallery-label { padding: 6px 8px; }
+    .gallery-name { font-size: 0.72rem; color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .gallery-meta { font-size: 0.65rem; color: #555; margin-top: 2px; }
+    .gallery-actions { display: flex; gap: 4px; padding: 0 6px 6px; }
+    .view-toggle { display: flex; gap: 4px; }
+    .view-btn { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #888; font-size: 0.8rem; padding: 4px 8px; cursor: pointer; transition: all 0.15s; }
+    .view-btn.active { border-color: #5eabff; color: #5eabff; background: rgba(94,171,255,0.08); }
+    .video-badge { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.65rem; padding: 2px 5px; border-radius: 3px; pointer-events: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>📦 TG <span>Storage</span></h1>
+
+  <div id="msg-global"></div>
+
+  <!-- LOGIN -->
+  <div id="section-login" class="card">
+    <div class="card-title" style="margin-bottom:16px">Вход</div>
+    <div class="row">
+      <div>
+        <label>Telegram ID</label>
+        <input id="login-tgid" type="number" placeholder="123456789">
+      </div>
+      <div>
+        <label>Admin Secret</label>
+        <input id="login-secret" type="password" placeholder="из .env — ADMIN_SECRET">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Войти</button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="section-main" class="hidden">
+
+    <!-- Storage -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">Хранилище</div>
+      <div class="storage-row">
+        <select id="storage-select" onchange="onStorageChange()">
+          <option value="">-- выберите хранилище --</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="toggleCreateStorage()">+ Новое</button>
+      </div>
+      <div id="create-storage-form" class="hidden">
+        <div class="row">
+          <div>
+            <label>Название</label>
+            <input id="storage-name" placeholder="Мои файлы">
+          </div>
+          <div>
+            <label>Chat ID канала</label>
+            <input id="storage-chat" placeholder="-1001234567890">
+          </div>
+        </div>
+        <label>Bot Token для воркера</label>
+        <input id="worker-token" placeholder="7783015380:AAG2NZI4...">
+        <button class="btn btn-primary" onclick="doCreateStorage()">Создать</button>
+        <div id="storage-msg"></div>
+      </div>
+
+      <!-- Add worker to existing storage -->
+      <div id="add-worker-row" class="hidden" style="display:flex;gap:8px;align-items:center;margin-top:10px">
+        <input id="add-worker-token" placeholder="Bot Token воркера" style="flex:1;margin-bottom:0">
+        <button class="btn btn-primary btn-sm" onclick="doAddWorker()">Добавить</button>
+        <button class="btn btn-ghost btn-sm" onclick="toggleAddWorker()">✕</button>
+      </div>
+      <div id="worker-msg"></div>
+
+      <div style="margin-top:8px">
+        <button class="btn btn-ghost btn-sm" id="add-worker-btn" onclick="toggleAddWorker()" style="display:none">+ Воркер</button>
+      </div>
+    </div>
+
+    <!-- Files + Folders combined -->
+    <div class="card" id="files-card">
+      <div class="card-header">
+        <div id="breadcrumb" class="breadcrumb"></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div class="view-toggle">
+            <button class="view-btn active" id="view-list-btn" onclick="setView('list')" title="Список">☰</button>
+            <button class="view-btn" id="view-grid-btn" onclick="setView('grid')" title="Сетка">⊞</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="new-folder-btn" onclick="showNewFolderInput()">📁 Папка</button>
+          <button class="btn btn-ghost btn-sm" onclick="findDuplicates()" title="Найти дубликаты">⊘ Дубли</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻</button>
+        </div>
+      </div>
+
+      <!-- New folder inline input -->
+      <div id="new-folder-row" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+        <input id="new-folder-input" class="inline-edit" placeholder="Название папки" style="width:auto;flex:1;margin-bottom:0">
+        <button class="btn btn-primary btn-sm" onclick="doCreateFolder()">Создать</button>
+        <button class="btn btn-ghost btn-sm" onclick="hideNewFolderInput()">✕</button>
+      </div>
+
+      <!-- Folder list -->
+      <div id="folder-list"></div>
+
+      <hr class="section-divider" id="folders-divider" style="display:none">
+
+      <!-- Upload zone -->
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="drop-icon">📁</div>
+        <p>Перетащи файлы или нажми для выбора (несколько сразу)</p>
+        <p style="font-size:0.75rem;margin-top:6px;color:#444">Максимум 2 ГБ на файл</p>
+      </div>
+      <input type="file" id="file-input" multiple onchange="handleFiles(this.files)">
+      <div id="upload-progress-list"></div>
+      <div id="upload-msg"></div>
+
+      <hr class="section-divider">
+
+      <!-- Filters -->
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <label style="margin-bottom:4px">Тип файла</label>
+          <select id="filter-mime" onchange="loadFiles()" style="margin-bottom:0">
+            <option value="">Все типы</option>
+            <option value="image">Изображения</option>
+            <option value="video">Видео</option>
+            <option value="audio">Аудио</option>
+            <option value="application/pdf">PDF</option>
+            <option value="application">Документы</option>
+            <option value="text">Текст</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="margin-bottom:4px">Дата от</label>
+          <input type="date" id="filter-date-from" oninput="loadFiles()" style="margin-bottom:0">
+        </div>
+        <div style="flex:1;min-width:120px">
+          <label style="margin-bottom:4px">Дата до</label>
+          <input type="date" id="filter-date-to" oninput="loadFiles()" style="margin-bottom:0">
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="clearFilters()" title="Сбросить фильтры">✕</button>
+      </div>
+
+      <!-- File list -->
+      <div id="file-list">
+        <p style="color:#555;font-size:0.85rem">Выберите хранилище</p>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Выйти</button>
+  </div>
+</div>
+
+<!-- Duplicates modal -->
+<div id="dup-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Дубликаты файлов</span>
+      <button class="btn btn-ghost btn-sm" onclick="closeDupModal()">✕</button>
+    </div>
+    <div id="dup-summary" style="font-size:0.85rem;color:#888;margin-bottom:12px"></div>
+    <div id="dup-actions" class="hidden" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-danger btn-sm" onclick="deleteSelectedDups()">Удалить выбранные</button>
+      <button class="btn btn-ghost btn-sm" onclick="selectAllDups(true)">Выбрать все дубли</button>
+      <button class="btn btn-ghost btn-sm" onclick="selectAllDups(false)">Снять выбор</button>
+    </div>
+    <div id="dup-list"></div>
+  </div>
+</div>
+
+<script>
+let token = localStorage.getItem('tgs_token');
+let refreshToken = localStorage.getItem('tgs_refresh_token');
+let currentStorageId = localStorage.getItem('tgs_storage');
+let currentFolderId = null;      // null = root
+let currentFolderName = null;
+let allFolders = [];             // cache for move selects
+
+function init() {
+  if (token) {
+    document.getElementById('section-main').classList.remove('hidden');
+    document.getElementById('section-login').classList.add('hidden');
+    loadStorages();
+  } else {
+    document.getElementById('section-login').classList.remove('hidden');
+    document.getElementById('section-main').classList.add('hidden');
+  }
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────
+
+async function doLogin() {
+  const tgid = document.getElementById('login-tgid').value.trim();
+  const secret = document.getElementById('login-secret').value.trim();
+  if (!tgid || !secret) return showMsg('msg-global', 'Заполни все поля', false);
+  const res = await req(`/admin/token?telegram_id=${encodeURIComponent(tgid)}&username=admin`, 'POST', null, {'X-Admin-Secret': secret});
+  if (res._err) return showMsg('msg-global', res._err, false);
+  token = res.access_token;
+  refreshToken = res.refresh_token;
+  localStorage.setItem('tgs_token', token);
+  localStorage.setItem('tgs_refresh_token', refreshToken);
+  init();
+}
+
+function doLogout() {
+  localStorage.removeItem('tgs_token');
+  localStorage.removeItem('tgs_refresh_token');
+  localStorage.removeItem('tgs_storage');
+  token = null; refreshToken = null; currentStorageId = null; currentFolderId = null;
+  init();
+}
+
+// ── STORAGES ──────────────────────────────────────────────────────
+
+async function loadStorages() {
+  const res = await req('/storages');
+  if (res._err) return;
+  const sel = document.getElementById('storage-select');
+  while (sel.options.length > 1) sel.remove(1);
+  (Array.isArray(res) ? res : []).forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name + ' (' + s.worker_count + ' воркеров)';
+    sel.appendChild(opt);
+  });
+  if (currentStorageId) {
+    sel.value = currentStorageId;
+    if (sel.value) {
+      document.getElementById('add-worker-btn').style.display = '';
+      loadAll();
+    }
+  }
+}
+
+function onStorageChange() {
+  currentStorageId = document.getElementById('storage-select').value;
+  currentFolderId = null;
+  currentFolderName = null;
+  localStorage.setItem('tgs_storage', currentStorageId);
+  document.getElementById('add-worker-btn').style.display = currentStorageId ? '' : 'none';
+  document.getElementById('add-worker-row').classList.add('hidden');
+  if (currentStorageId) loadAll();
+}
+
+function toggleAddWorker() {
+  const row = document.getElementById('add-worker-row');
+  const isHidden = row.classList.contains('hidden');
+  if (isHidden) {
+    row.classList.remove('hidden');
+    row.style.display = 'flex';
+    document.getElementById('add-worker-token').focus();
+  } else {
+    row.classList.add('hidden');
+    document.getElementById('add-worker-token').value = '';
+  }
+}
+
+async function doAddWorker() {
+  if (!currentStorageId) return;
+  const botToken = document.getElementById('add-worker-token').value.trim();
+  if (!botToken) return showMsg('worker-msg', 'Введи Bot Token', false);
+
+  showMsg('worker-msg', 'Проверяем токен…', true);
+  const res = await req('/storages/' + currentStorageId + '/workers', 'POST', {bot_token: botToken});
+  if (res._err) return showMsg('worker-msg', res._err, false);
+
+  showMsg('worker-msg', 'Воркер добавлен!', true);
+  document.getElementById('add-worker-token').value = '';
+  document.getElementById('add-worker-row').classList.add('hidden');
+  await loadStorages();
+  document.getElementById('storage-select').value = currentStorageId;
+}
+
+function toggleCreateStorage() {
+  document.getElementById('create-storage-form').classList.toggle('hidden');
+}
+
+async function doCreateStorage() {
+  const name = document.getElementById('storage-name').value.trim();
+  const chat = parseInt(document.getElementById('storage-chat').value.trim(), 10);
+  const workerTok = document.getElementById('worker-token').value.trim();
+  if (!name || !chat) return showMsg('storage-msg', 'Заполни название и Chat ID', false);
+
+  showMsg('storage-msg', 'Создаём хранилище…', true);
+  const storage = await req('/storages', 'POST', {name, chat_id: chat});
+  if (storage._err) return showMsg('storage-msg', storage._err, false);
+
+  if (workerTok) {
+    showMsg('storage-msg', 'Добавляем воркера…', true);
+    const w = await req('/storages/' + storage.id + '/workers', 'POST', {bot_token: workerTok});
+    if (w._err) return showMsg('storage-msg', 'Хранилище создано, ошибка воркера: ' + w._err, false);
+  }
+
+  showMsg('storage-msg', 'Готово!', true);
+  document.getElementById('create-storage-form').classList.add('hidden');
+  await loadStorages();
+  document.getElementById('storage-select').value = storage.id;
+  currentStorageId = storage.id;
+  currentFolderId = null;
+  localStorage.setItem('tgs_storage', currentStorageId);
+  loadAll();
+}
+
+// ── FOLDERS ───────────────────────────────────────────────────────
+
+async function loadAll() {
+  if (!currentStorageId) return;
+  await Promise.all([loadFolders(), loadFiles()]);
+}
+
+async function loadFolders() {
+  if (!currentStorageId) return;
+  const res = await req('/folders?storage_id=' + encodeURIComponent(currentStorageId));
+  allFolders = Array.isArray(res) ? res : [];
+
+  const el = document.getElementById('folder-list');
+  while (el.firstChild) el.removeChild(el.firstChild);
+
+  // Only show folders when at root
+  if (currentFolderId !== null) {
+    document.getElementById('folders-divider').style.display = 'none';
+    renderBreadcrumb();
+    return;
+  }
+
+  if (allFolders.length === 0) {
+    document.getElementById('folders-divider').style.display = 'none';
+    renderBreadcrumb();
+    return;
+  }
+
+  document.getElementById('folders-divider').style.display = '';
+
+  allFolders.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'folder-item';
+    row.id = 'folder-row-' + f.id;
+
+    const icon = document.createElement('span');
+    icon.textContent = '📁';
+    icon.style.fontSize = '1.2rem';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'file-info';
+    const n = document.createElement('div');
+    n.className = 'file-name';
+    n.textContent = f.name;
+    n.style.cursor = 'pointer';
+    n.onclick = () => enterFolder(f.id, f.name);
+    const m = document.createElement('div');
+    m.className = 'file-meta';
+    m.textContent = f.file_count + ' файл(ов)';
+    nameEl.appendChild(n);
+    nameEl.appendChild(m);
+
+    const actions = document.createElement('div');
+    actions.className = 'file-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-ghost btn-sm';
+    editBtn.textContent = '✏️';
+    editBtn.title = 'Переименовать';
+    editBtn.onclick = (e) => { e.stopPropagation(); startRenameFolder(f.id, f.name, n); };
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn btn-danger btn-sm';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Удалить папку';
+    delBtn.onclick = (e) => { e.stopPropagation(); deleteFolder(f.id, f.name); };
+
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+
+    row.appendChild(icon);
+    row.appendChild(nameEl);
+    row.appendChild(actions);
+    el.appendChild(row);
+  });
+
+  renderBreadcrumb();
+}
+
+function enterFolder(folderId, folderName) {
+  currentFolderId = folderId;
+  currentFolderName = folderName;
+  loadAll();
+}
+
+function goToRoot() {
+  currentFolderId = null;
+  currentFolderName = null;
+  loadAll();
+}
+
+function renderBreadcrumb() {
+  const el = document.getElementById('breadcrumb');
+  while (el.firstChild) el.removeChild(el.firstChild);
+
+  const root = document.createElement('span');
+  root.textContent = '🏠 Корень';
+  if (currentFolderId !== null) {
+    root.onclick = goToRoot;
+  } else {
+    root.className = 'current';
+  }
+  el.appendChild(root);
+
+  if (currentFolderId !== null) {
+    const sep = document.createElement('span');
+    sep.className = 'sep';
+    sep.textContent = '›';
+    el.appendChild(sep);
+
+    const cur = document.createElement('span');
+    cur.className = 'current';
+    cur.textContent = '📁 ' + currentFolderName;
+    el.appendChild(cur);
+  }
+}
+
+function showNewFolderInput() {
+  const row = document.getElementById('new-folder-row');
+  row.style.display = 'flex';
+  row.classList.remove('hidden');
+  document.getElementById('new-folder-input').focus();
+}
+
+function hideNewFolderInput() {
+  const row = document.getElementById('new-folder-row');
+  row.classList.add('hidden');
+  document.getElementById('new-folder-input').value = '';
+}
+
+async function doCreateFolder() {
+  if (!currentStorageId) return;
+  const name = document.getElementById('new-folder-input').value.trim();
+  if (!name) return;
+
+  const res = await req('/folders', 'POST', {name, storage_id: currentStorageId});
+  if (res._err) return showMsg('msg-global', res._err, false);
+
+  hideNewFolderInput();
+  await loadFolders();
+}
+
+function startRenameFolder(folderId, currentName, nameEl) {
+  const input = document.createElement('input');
+  input.className = 'inline-edit';
+  input.value = currentName;
+
+  const finish = async () => {
+    const newName = input.value.trim();
+    if (newName && newName !== currentName) {
+      const res = await req('/folders/' + folderId, 'PATCH', {name: newName});
+      if (res._err) { showMsg('msg-global', res._err, false); }
+    }
+    await loadFolders();
+  };
+
+  input.onblur = finish;
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { input.value = currentName; input.blur(); }
+  };
+
+  nameEl.textContent = '';
+  nameEl.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+async function deleteFolder(folderId, name) {
+  if (!confirm('Удалить папку «' + name + '»? Папка должна быть пустой.')) return;
+  const res = await req('/folders/' + folderId, 'DELETE');
+  if (res && res._err) return showMsg('msg-global', res._err, false);
+  await loadFolders();
+}
+
+// ── FILES ─────────────────────────────────────────────────────────
+
+function clearFilters() {
+  document.getElementById('filter-mime').value = '';
+  document.getElementById('filter-date-from').value = '';
+  document.getElementById('filter-date-to').value = '';
+  loadFiles();
+}
+
+async function loadFiles() {
+  if (!currentStorageId) return;
+  let url = '/files?storage_id=' + encodeURIComponent(currentStorageId);
+  if (currentFolderId) url += '&folder_id=' + encodeURIComponent(currentFolderId);
+
+  const mime = document.getElementById('filter-mime')?.value;
+  if (mime) url += '&mime_category=' + encodeURIComponent(mime);
+
+  const dateFrom = document.getElementById('filter-date-from')?.value;
+  if (dateFrom) url += '&date_from=' + encodeURIComponent(dateFrom + 'T00:00:00');
+
+  const dateTo = document.getElementById('filter-date-to')?.value;
+  if (dateTo) url += '&date_to=' + encodeURIComponent(dateTo + 'T23:59:59');
+
+  const res = await req(url);
+  const el = document.getElementById('file-list');
+  while (el.firstChild) el.removeChild(el.firstChild);
+
+  if (res._err) {
+    const p = document.createElement('p');
+    p.style.color = '#f44';
+    p.textContent = res._err;
+    el.appendChild(p);
+    return;
+  }
+
+  const items = res.items || [];
+  if (items.length === 0) {
+    const p = document.createElement('p');
+    p.style.cssText = 'color:#555;font-size:0.85rem;padding:4px 0';
+    p.textContent = currentFolderId ? 'Папка пуста' : 'Файлов в корне нет';
+    el.appendChild(p);
+    return;
+  }
+
+  // Gallery view — grid of thumbnails
+  if (currentView === 'grid') {
+    const grid = document.createElement('div');
+    grid.className = 'gallery-grid';
+    items.forEach(f => grid.appendChild(createGalleryCard(f)));
+    el.appendChild(grid);
+    return;
+  }
+
+  // List view (default)
+  items.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'file-item';
+
+    const icon = document.createElement('div');
+    icon.className = 'file-icon';
+    icon.textContent = fileIcon(f.mime_type);
+
+    const info = document.createElement('div');
+    info.className = 'file-info';
+    const name = document.createElement('div');
+    name.className = 'file-name';
+    name.textContent = f.name;
+    const meta = document.createElement('div');
+    meta.className = 'file-meta';
+    meta.textContent = fmtSize(f.size) + ' \u2022 ' + fmtDate(f.created_at);
+    info.appendChild(name);
+    info.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'file-actions';
+
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + (f.is_uploaded ? 'badge-ok' : 'badge-pending');
+    badge.textContent = f.is_uploaded ? 'OK' : '...';
+    actions.appendChild(badge);
+
+    if (f.is_uploaded) {
+      const dl = document.createElement('button');
+      dl.className = 'btn btn-ghost btn-sm';
+      dl.textContent = '\u2B07';
+      dl.title = 'Скачать';
+      dl.onclick = () => downloadFile(f.id, f.name, dl);
+      actions.appendChild(dl);
+
+      // Move to folder select
+      if (allFolders.length > 0 || currentFolderId !== null) {
+        const moveSelect = document.createElement('select');
+        moveSelect.className = 'move-select';
+        moveSelect.title = 'Переместить в папку';
+
+        const rootOpt = document.createElement('option');
+        rootOpt.value = '';
+        rootOpt.textContent = f.folder_id ? '→ Корень' : '📁 Папка...';
+        moveSelect.appendChild(rootOpt);
+
+        allFolders.forEach(folder => {
+          if (folder.id === f.folder_id) return;
+          const opt = document.createElement('option');
+          opt.value = folder.id;
+          opt.textContent = '→ ' + folder.name;
+          moveSelect.appendChild(opt);
+        });
+
+        if (f.folder_id) {
+          const toRoot = document.createElement('option');
+          toRoot.value = '__root__';
+          toRoot.textContent = '→ В корень';
+          moveSelect.appendChild(toRoot);
+        }
+
+        moveSelect.onchange = async () => {
+          const val = moveSelect.value;
+          if (!val) return;
+          const targetFolder = val === '__root__' ? null : val;
+          const res = await req('/files/' + f.id + '/move', 'PATCH', {folder_id: targetFolder});
+          if (res._err) showMsg('msg-global', res._err, false);
+          else loadAll();
+        };
+
+        actions.appendChild(moveSelect);
+      }
+    }
+
+    const del = document.createElement('button');
+    del.className = 'btn btn-danger btn-sm';
+    del.textContent = '\u2715';
+    del.onclick = () => deleteFile(f.id);
+    actions.appendChild(del);
+
+    row.appendChild(icon);
+    row.appendChild(info);
+    row.appendChild(actions);
+    el.appendChild(row);
+  });
+}
+
+async function deleteFile(fileId) {
+  if (!confirm('Удалить файл?')) return;
+  await req('/files/' + fileId, 'DELETE');
+  loadAll();
+}
+
+// ── DUPLICATES ────────────────────────────────────────────────────
+
+async function findDuplicates() {
+  if (!currentStorageId) return showMsg('msg-global', 'Сначала выбери хранилище', false);
+
+  const summaryEl = document.getElementById('dup-summary');
+  const listEl = document.getElementById('dup-list');
+  const actionsEl = document.getElementById('dup-actions');
+
+  summaryEl.textContent = 'Поиск...';
+  while (listEl.firstChild) listEl.removeChild(listEl.firstChild);
+  actionsEl.classList.add('hidden');
+  document.getElementById('dup-modal').classList.remove('hidden');
+
+  const res = await req('/files/duplicates?storage_id=' + encodeURIComponent(currentStorageId));
+  if (res._err) {
+    summaryEl.textContent = 'Ошибка: ' + res._err;
+    return;
+  }
+
+  if (res.total_groups === 0) {
+    summaryEl.textContent = 'Дублей не найдено — все файлы уникальны.';
+    return;
+  }
+
+  summaryEl.textContent =
+    'Найдено ' + res.total_groups + ' групп · ' + res.total_duplicates + ' лишних файлов';
+  actionsEl.classList.remove('hidden');
+
+  res.groups.forEach(group => {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'dup-group';
+
+    const header = document.createElement('div');
+    header.className = 'dup-group-header';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'dup-group-name';
+    nameSpan.textContent = group.name;
+    nameSpan.title = group.name;
+    const metaSpan = document.createElement('span');
+    metaSpan.className = 'dup-group-meta';
+    metaSpan.textContent = fmtSize(group.size) + ' · ' + group.files.length + ' копии';
+    header.appendChild(nameSpan);
+    header.appendChild(metaSpan);
+    groupEl.appendChild(header);
+
+    // Sort oldest first — newest is kept by default
+    const sorted = [...group.files].sort(
+      (a, b) => new Date(a.created_at) - new Date(b.created_at)
+    );
+
+    sorted.forEach((f, i) => {
+      const isNewest = i === sorted.length - 1;
+      const row = document.createElement('div');
+      row.className = 'dup-item';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.dataset.fileId = f.id;
+      cb.checked = !isNewest;
+
+      const dateEl = document.createElement('div');
+      dateEl.style.cssText = 'flex:1;font-size:0.8rem;color:#aaa';
+      dateEl.textContent = fmtDate(f.created_at);
+
+      const badge = document.createElement('span');
+      if (isNewest) {
+        badge.className = 'dup-keep-badge';
+        badge.textContent = 'оставить';
+      } else {
+        badge.className = 'dup-del-badge';
+        badge.textContent = 'дубль';
+      }
+
+      row.appendChild(cb);
+      row.appendChild(dateEl);
+      row.appendChild(badge);
+      groupEl.appendChild(row);
+    });
+
+    listEl.appendChild(groupEl);
+  });
+}
+
+function closeDupModal() {
+  document.getElementById('dup-modal').classList.add('hidden');
+}
+
+function selectAllDups(checked) {
+  document.querySelectorAll('#dup-list input[type=checkbox]').forEach(cb => {
+    cb.checked = checked;
+  });
+}
+
+async function deleteSelectedDups() {
+  const checked = [...document.querySelectorAll('#dup-list input[type=checkbox]:checked')];
+  if (checked.length === 0) return showMsg('msg-global', 'Ничего не выбрано', false);
+  if (!confirm('Удалить ' + checked.length + ' файл(ов)?')) return;
+
+  const fileIds = checked.map(cb => cb.dataset.fileId);
+  const res = await req('/files/bulk', 'DELETE', { file_ids: fileIds });
+  if (res._err) return showMsg('msg-global', res._err, false);
+
+  showMsg('msg-global', 'Удалено ' + res.deleted + ' файлов', true);
+  closeDupModal();
+  loadAll();
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────────
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+
+async function handleFiles(files) {
+  if (!currentStorageId) return showMsg('upload-msg', 'Сначала выбери хранилище', false);
+  const fileArr = Array.from(files);
+  if (fileArr.length === 0) return;
+
+  // Clear previous progress
+  const progressList = document.getElementById('upload-progress-list');
+  while (progressList.firstChild) progressList.removeChild(progressList.firstChild);
+
+  // Upload all files in parallel
+  await Promise.allSettled(fileArr.map(file => uploadFile(file, progressList)));
+
+  // Reset file input so same files can be re-selected
+  document.getElementById('file-input').value = '';
+
+  setTimeout(() => loadAll(), 1500);
+}
+
+function uploadFile(file, progressContainer) {
+  const MAX = 2 * 1024 * 1024 * 1024;
+  if (file.size > MAX) {
+    appendProgressItem(progressContainer, file.name, 0, '❌ Слишком большой (макс 2 ГБ)');
+    return Promise.resolve();
+  }
+
+  const progressItem = appendProgressItem(progressContainer, file.name, 0, '');
+  const fill = progressItem.querySelector('.progress-bar-fill');
+  const label = progressItem.querySelector('.progress-status');
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('storage_id', currentStorageId);
+  if (currentFolderId) form.append('folder_id', currentFolderId);
+
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.addEventListener('progress', (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 95); // cap at 95% until server confirms
+      fill.style.width = pct + '%';
+      label.textContent = pct + '%';
+    });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 401) { doLogout(); resolve(); return; }
+      fill.style.width = '100%';
+      try {
+        const data = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300) {
+          label.textContent = '✓ Отправлено в Telegram…';
+          label.style.color = '#4caf50';
+        } else {
+          label.textContent = '❌ ' + (data.detail || 'Ошибка ' + xhr.status);
+          label.style.color = '#f44336';
+          fill.style.background = '#f44336';
+        }
+      } catch {
+        label.textContent = '❌ Неожиданный ответ';
+        label.style.color = '#f44336';
+      }
+      resolve();
+    });
+
+    xhr.addEventListener('error', () => {
+      label.textContent = '❌ Сетевая ошибка';
+      label.style.color = '#f44336';
+      resolve();
+    });
+
+    xhr.open('POST', '/files/upload');
+    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    xhr.send(form);
+  });
+}
+
+function appendProgressItem(container, filename, pct, status) {
+  const wrap = document.createElement('div');
+  wrap.className = 'progress-item';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'progress-label';
+  const nameSpan = document.createElement('span');
+  nameSpan.textContent = filename;
+  nameSpan.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px';
+  const statusSpan = document.createElement('span');
+  statusSpan.className = 'progress-status';
+  statusSpan.textContent = status;
+  lbl.appendChild(nameSpan);
+  lbl.appendChild(statusSpan);
+
+  const bar = document.createElement('div');
+  bar.className = 'progress-bar';
+  const fill = document.createElement('div');
+  fill.className = 'progress-bar-fill';
+  fill.style.width = pct + '%';
+  bar.appendChild(fill);
+
+  wrap.appendChild(lbl);
+  wrap.appendChild(bar);
+  container.appendChild(wrap);
+  return wrap;
+}
+
+// ── DOWNLOAD ─────────────────────────────────────────────────────
+
+async function downloadFile(fileId, fileName, btn) {
+  if (btn && btn.disabled) return;
+  const origText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+
+  try {
+    const resp = await fetch('/files/' + fileId + '/download', {
+      headers: {'Authorization': 'Bearer ' + token},
+    });
+    if (resp.status === 401) { doLogout(); return; }
+    if (!resp.ok) {
+      const data = await resp.json().catch(() => ({}));
+      return showMsg('msg-global', data.detail || 'Ошибка скачивания', false);
+    }
+
+    const contentLength = parseInt(resp.headers.get('content-length') || '0', 10);
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (btn && contentLength > 0) {
+        const pct = Math.round((received / contentLength) * 100);
+        btn.textContent = pct + '%';
+      }
+    }
+
+    const blob = new Blob(chunks, { type: resp.headers.get('content-type') || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch {
+    showMsg('msg-global', 'Сетевая ошибка при скачивании', false);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origText; }
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────
+
+async function req(path, method = 'GET', body = null, extraHeaders = {}, _retry = false) {
+  const headers = Object.assign({'Content-Type': 'application/json'}, extraHeaders);
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+  const opts = {method, headers};
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const r = await fetch(path, opts);
+    if (r.status === 204) return {};
+    if (r.status === 401) {
+      if (!_retry && refreshToken) {
+        const refreshed = await tryRefresh();
+        if (refreshed) return req(path, method, body, extraHeaders, true);
+      }
+      doLogout();
+      return {_err: 'Не авторизован'};
+    }
+    const data = await r.json();
+    if (!r.ok) return {_err: data.detail || JSON.stringify(data)};
+    return data;
+  } catch {
+    return {_err: 'Сетевая ошибка'};
+  }
+}
+
+async function tryRefresh() {
+  try {
+    const r = await fetch('/auth/refresh', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({refresh_token: refreshToken}),
+    });
+    if (!r.ok) return false;
+    const data = await r.json();
+    token = data.access_token;
+    refreshToken = data.refresh_token;
+    localStorage.setItem('tgs_token', token);
+    localStorage.setItem('tgs_refresh_token', refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function showMsg(id, text, ok) {
+  const el = document.getElementById(id);
+  while (el.firstChild) el.removeChild(el.firstChild);
+  const div = document.createElement('div');
+  div.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
+  div.textContent = text;
+  el.appendChild(div);
+  if (ok) setTimeout(() => { while (el.firstChild) el.removeChild(el.firstChild); }, 4000);
+}
+
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  if (b < 1073741824) return (b / 1048576).toFixed(1) + ' MB';
+  return (b / 1073741824).toFixed(1) + ' GB';
+}
+function fmtDate(s) { return new Date(s).toLocaleString('ru'); }
+function fileIcon(mime) {
+  if (!mime) return '\uD83D\uDCC4';
+  if (mime.startsWith('image/')) return '\uD83D\uDDBC';
+  if (mime.startsWith('video/')) return '\uD83C\uDFAC';
+  if (mime.startsWith('audio/')) return '\uD83C\uDFB5';
+  if (mime.includes('pdf')) return '\uD83D\uDCD5';
+  if (mime.includes('zip') || mime.includes('rar')) return '\uD83D\uDDDC';
+  return '\uD83D\uDCC4';
+}
+
+// ── View toggle ──────────────────────────────────────────────────
+
+let currentView = 'list'; // 'list' | 'grid'
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('view-list-btn').classList.toggle('active', v === 'list');
+  document.getElementById('view-grid-btn').classList.toggle('active', v === 'grid');
+  loadFiles();
+}
+
+// ── Blurhash decoder (inline, no deps) ──────────────────────────
+
+const _BH_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz#$%*+,-.:;=?@[]^_{|}~';
+function _bh83(s, st, en) { let v = 0; for (let i = st; i < en; i++) v = v * 83 + _BH_CHARS.indexOf(s[i]); return v; }
+function _bhLinear(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+function _bhSRGB(v) { v = Math.max(0, Math.min(1, v)); return Math.round(v <= 0.0031308 ? v * 12.92 * 255 : (1.055 * Math.pow(v, 1/2.4) - 0.055) * 255); }
+function _bhSP(v, e) { return (v < 0 ? -1 : 1) * Math.pow(Math.abs(v), e); }
+
+function decodeBlurHash(hash, W, H) {
+  const sf = _bh83(hash, 0, 1);
+  const numY = Math.floor(sf / 9) + 1, numX = (sf % 9) + 2;
+  const maxV = (_bh83(hash, 1, 2) + 1) / 166;
+  const colors = Array.from({length: numX * numY}, (_, i) => {
+    if (i === 0) {
+      const n = _bh83(hash, 2, 6);
+      return [_bhLinear((n >> 16) & 255), _bhLinear((n >> 8) & 255), _bhLinear(n & 255)];
+    }
+    const n = _bh83(hash, 4 + i * 2, 6 + i * 2);
+    return [_bhSP(Math.floor(n / 361) - 9, 2) * maxV / 81,
+            _bhSP(Math.floor(n / 19) % 19 - 9, 2) * maxV / 81,
+            _bhSP(n % 19 - 9, 2) * maxV / 81];
+  });
+  const px = new Uint8ClampedArray(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let r = 0, g = 0, b = 0;
+    for (let j = 0; j < numY; j++) for (let i = 0; i < numX; i++) {
+      const basis = Math.cos(Math.PI * x * i / W) * Math.cos(Math.PI * y * j / H);
+      const c = colors[i + j * numX];
+      r += c[0] * basis; g += c[1] * basis; b += c[2] * basis;
+    }
+    const idx = (y * W + x) * 4;
+    px[idx] = _bhSRGB(r); px[idx+1] = _bhSRGB(g); px[idx+2] = _bhSRGB(b); px[idx+3] = 255;
+  }
+  return px;
+}
+
+function renderBlurhash(canvas, hash) {
+  try {
+    const W = 32, H = 32;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    const px = decodeBlurHash(hash, W, H);
+    const imageData = ctx.createImageData(W, H);
+    imageData.data.set(px);
+    ctx.putImageData(imageData, 0, 0);
+  } catch {}
+}
+
+// ── Thumbnail fetch cache (blob URLs, session-scoped) ─────────────
+
+const thumbCache = new Map(); // fileId → blob URL
+const previewCache = new Map(); // fileId → blob URL
+
+async function fetchThumbnail(fileId, size) {
+  const key = `${fileId}-${size}`;
+  if (thumbCache.has(key)) return thumbCache.get(key);
+  try {
+    const resp = await fetch(`/files/${fileId}/thumbnail?size=${size}`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!resp.ok) return null;
+    const url = URL.createObjectURL(await resp.blob());
+    thumbCache.set(key, url);
+    return url;
+  } catch { return null; }
+}
+
+async function fetchPreview(fileId) {
+  if (previewCache.has(fileId)) return previewCache.get(fileId);
+  try {
+    const resp = await fetch(`/files/${fileId}/preview`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!resp.ok) return null;
+    const url = URL.createObjectURL(await resp.blob());
+    previewCache.set(fileId, url);
+    return url;
+  } catch { return null; }
+}
+
+// ── IntersectionObserver for lazy thumbnail loading ───────────────
+
+const thumbObserver = new IntersectionObserver(async (entries) => {
+  for (const entry of entries) {
+    if (!entry.isIntersecting) continue;
+    const img = entry.target;
+    thumbObserver.unobserve(img);
+    const fileId = img.dataset.fileId;
+    const size = img.dataset.size || '200';
+    const url = await fetchThumbnail(fileId, size);
+    if (url) { img.src = url; }
+  }
+}, { rootMargin: '300px' });
+
+// ── Gallery card builder ──────────────────────────────────────────
+
+function createGalleryCard(f) {
+  const isVideo = f.mime_type && f.mime_type.startsWith('video/');
+  const isImage = f.mime_type && f.mime_type.startsWith('image/');
+
+  const card = document.createElement('div');
+  card.className = 'gallery-card';
+
+  // Thumbnail wrapper
+  const wrap = document.createElement('div');
+  wrap.className = 'gallery-thumb';
+
+  // Blurhash placeholder canvas
+  if (f.blurhash && (isImage || isVideo)) {
+    const canvas = document.createElement('canvas');
+    canvas.className = 'gallery-blur';
+    renderBlurhash(canvas, f.blurhash);
+    wrap.appendChild(canvas);
+  }
+
+  // Lazy-loaded thumbnail
+  if (isImage || isVideo) {
+    const img = document.createElement('img');
+    img.className = 'gallery-img';
+    img.dataset.fileId = f.id;
+    img.dataset.size = '200';
+    img.alt = f.name;
+    img.onload = () => img.classList.add('loaded');
+    thumbObserver.observe(img);
+
+    if (isVideo) {
+      const badge = document.createElement('span');
+      badge.className = 'video-badge';
+      badge.textContent = '▶ видео';
+      wrap.appendChild(badge);
+
+      wrap.addEventListener('mouseenter', async () => {
+        const url = await fetchPreview(f.id);
+        if (url && img.src !== url) img.src = url;
+      });
+      wrap.addEventListener('mouseleave', async () => {
+        const url = thumbCache.get(`${f.id}-200`);
+        if (url) img.src = url;
+      });
+    }
+
+    wrap.appendChild(img);
+  } else {
+    const ico = document.createElement('div');
+    ico.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;color:#444';
+    ico.textContent = fileIcon(f.mime_type);
+    wrap.appendChild(ico);
+  }
+
+  card.appendChild(wrap);
+
+  // Label
+  const label = document.createElement('div');
+  label.className = 'gallery-label';
+  const nameEl = document.createElement('div');
+  nameEl.className = 'gallery-name';
+  nameEl.textContent = f.name;
+  nameEl.title = f.name;
+  const metaEl = document.createElement('div');
+  metaEl.className = 'gallery-meta';
+  metaEl.textContent = fmtSize(f.size);
+  label.appendChild(nameEl);
+  label.appendChild(metaEl);
+  card.appendChild(label);
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'gallery-actions';
+
+  if (f.is_uploaded) {
+    const dl = document.createElement('button');
+    dl.className = 'btn btn-ghost btn-sm';
+    dl.textContent = '⬇';
+    dl.title = 'Скачать';
+    dl.onclick = (e) => { e.stopPropagation(); downloadFile(f.id, f.name, dl); };
+    actions.appendChild(dl);
+  }
+
+  const del = document.createElement('button');
+  del.className = 'btn btn-danger btn-sm';
+  del.textContent = '✕';
+  del.onclick = (e) => { e.stopPropagation(); deleteFile(f.id); };
+  actions.appendChild(del);
+
+  card.appendChild(actions);
+  return card;
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+[project]
+name = "tg-storage"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "tests/*",
+    "alembic/*",
+    # Requires external services (ffmpeg, Pillow, Telegram): tested via integration
+    "app/services/thumbnail.py",
+]

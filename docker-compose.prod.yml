@@ -1,0 +1,14 @@
+services:
+  db:
+    ports: []  # не открываем postgres наружу в проде
+
+  api:
+    volumes: []  # не монтируем директорию в проде
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.11.0.0/24

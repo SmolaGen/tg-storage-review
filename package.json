@@ -1,0 +1,28 @@
+{
+  "name": "tg-storage",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SmolaGen/tg-storage.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/SmolaGen/tg-storage/issues"
+  },
+  "homepage": "https://github.com/SmolaGen/tg-storage#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}
